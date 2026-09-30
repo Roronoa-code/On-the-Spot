@@ -2,6 +2,16 @@
 
 Personal Windows learning and recall app. Electron, React/TypeScript and local SQLite. Today, Practice and Progress contain the complete local learning loop.
 
+## Complete app downloads
+
+- [Windows installer — complete app with offline voice](https://github.com/Roronoa-code/On-the-Spot/releases/download/v0.2.1/On%20the%20Spot%20Setup%200.2.1.exe)
+- [Portable Windows app — extract and run](https://github.com/Roronoa-code/On-the-Spot/releases/download/v0.2.1/On-the-Spot-Portable-Windows-0.2.1.zip)
+- [Complete project — source, compiled frontend, tests, UI preview and speech files](https://github.com/Roronoa-code/On-the-Spot/releases/download/v0.2.1/On-the-Spot-Complete-Project-0.2.1.zip)
+- [Speech runtime for repository clones](https://github.com/Roronoa-code/On-the-Spot/releases/download/v0.2.1/On-the-Spot-Voice-Runtime-0.2.1.zip)
+- [SHA-256 checksums](https://github.com/Roronoa-code/On-the-Spot/releases/download/v0.2.1/SHA256SUMS.txt)
+
+The complete application files are attached to the [public release](https://github.com/Roronoa-code/On-the-Spot/releases/tag/v0.2.1). The Git repository contains the source and build configuration; the large app and speech files are release downloads.
+
 ## Install and use
 
 Download **On the Spot Setup 0.2.1.exe** from the [GitHub release](https://github.com/Roronoa-code/On-the-Spot/releases/tag/v0.2.1) and run it on 64-bit Windows. This is the complete app, including the offline speech model and recognition runtime. No separate speech download or API key is needed to use the installed app. The installer is unsigned. Updates and uninstall preserve learner and account data.
