@@ -4,7 +4,7 @@ Personal Windows learning and recall app. Electron, React/TypeScript and local S
 
 ## Install and use
 
-Build the Windows installer using the instructions below, then run `release/On the Spot Setup 0.2.1.exe` on 64-bit Windows. The packaged installer includes the offline speech model. No API key is needed. The installer is unsigned. Updates and uninstall preserve learner and account data.
+Download **On the Spot Setup 0.2.1.exe** from the [GitHub release](https://github.com/Roronoa-code/On-the-Spot/releases/tag/v0.2.1) and run it on 64-bit Windows. This is the complete app, including the offline speech model and recognition runtime. No separate speech download or API key is needed to use the installed app. The installer is unsigned. Updates and uninstall preserve learner and account data.
 
 1. Fill in your interests, goal and preferred language. Edit them later in Progress.
 2. In Today, choose a short or daily session and optionally a topic. Teaching comes before unfamiliar material and prerequisites.
@@ -49,6 +49,8 @@ Node.js 24 or newer and 64-bit Windows:
 
 ```powershell
 npm ci
+# For local speech or packaging, extract the voice-runtime folder from
+# On-the-Spot-Voice-Runtime-0.2.1.zip into this project first.
 npm start
 npm run check
 npm run package
@@ -56,7 +58,11 @@ npm run package
 
 Dependencies are locked in package-lock.json. Source is in src and electron; installers are generated in release. Account data, local build output, private verification artifacts and speech binaries are excluded from this repository.
 
-Before packaging or using local speech, download the Windows x64 CPU archive from the [whisper.cpp v1.8.3 release](https://github.com/ggml-org/whisper.cpp/releases/tag/v1.8.3). Extract its `Release` folder into `voice-runtime/Release`. Download [ggml-base.bin](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin) into `voice-runtime/ggml-base.bin`. Verify both downloads against the SHA-256 hashes in THIRD-PARTY-NOTICES.txt. Typing and offline learning work without these speech files.
+The [GitHub release](https://github.com/Roronoa-code/On-the-Spot/releases/tag/v0.2.1) also includes **On-the-Spot-Voice-Runtime-0.2.1.zip** for building the complete app from source. Extract its `voice-runtime` folder into the project root. Release assets have SHA-256 checksums in `SHA256SUMS.txt`.
+
+Alternatively, download the Windows x64 CPU archive from the [whisper.cpp v1.8.3 release](https://github.com/ggml-org/whisper.cpp/releases/tag/v1.8.3). Extract its `Release` folder into `voice-runtime/Release`. Download [ggml-base.bin](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin) into `voice-runtime/ggml-base.bin`. Verify both downloads against the SHA-256 hashes in THIRD-PARTY-NOTICES.txt. Typing and offline learning work without these speech files.
+
+The current UI layout comparison is included in `design/layout-preview.html`. Open it in a browser to try both directions. It uses sample content and does not change learner data; the released app uses the current monochrome UI.
 
 Optional hidden desktop verification with an available Playwright install:
 
