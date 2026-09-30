@@ -1,104 +1,42 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './style.css';
-import { LearningView, type LearningState } from './LearningView';
-
-type State = {
-  maximized?: boolean;
-  voice?: { available: boolean; consent: boolean; transcript: { text: string; processingMs: number } | null };
-  learning?: LearningState;
-  accounts: { clientId: string; email: string; signedIn: boolean }[]; active: string | null;
-  signedIn: boolean; planEnabled: boolean; busy: string; message: string; blocked: string; welcome: boolean;
-  models: { slug: string; name: string }[]; evidence: { event: string; at: string }[];
-  selectedModel: string; reasoningEffort: string;
-  lastError: { code: string; status: number; requestId: string } | null;
-};
-declare global { interface Window { onTheSpot?: { state(): Promise<State>; command(action: string, payload?: Record<string, unknown>): Promise<State> } } }
-const bridge = window.onTheSpot;
-const empty: State = { accounts: [], active: null, signedIn: false, planEnabled: false, busy: '', message: 'Open the desktop app to connect your ChatGPT plan. Offline practice is available here.', blocked: '', welcome: false, models: [], evidence: [], lastError: null, selectedModel: 'gpt-6-luna', reasoningEffort: 'max' };
-const steps = [['registration', 'Account connected'], ['completed_response', 'Completed response'], ['refresh', 'Session renewed'], ['revocation', 'Session revoked'], ['usage_visible_user_confirmed', 'Usage seen in ChatGPT']] as const;
+import { LearningView, PracticeSettings, ProfileForm } from './LearningView';
+import { ConnectionPanel } from './ConnectionPanel';
+import { changeScene, Disclosure, Icon, Sheet } from './ui';
+import { useDesktop } from './useDesktop';
+import type { Page } from './types';
 
 function App() {
-  const [state, setState] = useState<State>(empty);
-  const [tab, setTab] = useState('Today');
-  const model = state.selectedModel;
-  const [requesting, setRequesting] = useState(false);
-  const [notice, setNotice] = useState('');
-  const [slow, setSlow] = useState(false);
-  const dialog = useRef<HTMLDialogElement>(null);
-  const nav = useRef<HTMLDivElement>(null), pill = useRef<HTMLSpanElement>(null);
-  const motion = state.learning?.settings.motion ?? 'liquid';
-  useLayoutEffect(() => {
-    const move = (animate = true) => {
-      const target = nav.current?.querySelector<HTMLButtonElement>('.selected'), highlight = pill.current;
-      if (!target || !highlight) return;
-      const style = getComputedStyle(highlight), left = parseFloat(style.left) || 4, width = parseFloat(style.width) || target.offsetWidth;
-      const to = { left: `${target.offsetLeft}px`, width: `${target.offsetWidth}px` };
-      highlight.getAnimations().forEach(a => a.cancel()); Object.assign(highlight.style, to, { opacity: '1' });
-      if (!animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-      const forward = target.offsetLeft > left, right = left + width, newRight = target.offsetLeft + target.offsetWidth;
-      const midLeft = left + (target.offsetLeft - left) * (forward ? .32 : .82), midRight = right + (newRight - right) * (forward ? .82 : .32);
-      highlight.animate(motion === 'liquid' ? [{left: `${left}px`,width: `${width}px`},{left: `${midLeft}px`,width: `${Math.max(1,midRight-midLeft)}px`,offset:.55},to] : [{left: `${left}px`,width: `${width}px`},to], {duration:motion === 'liquid' ? 400 : 180,easing:'cubic-bezier(.2,.8,.2,1)'});
-    };
-    move(); let observedWidth = nav.current?.clientWidth;
-    const resize = new ResizeObserver(() => { if (observedWidth !== nav.current?.clientWidth) { observedWidth = nav.current?.clientWidth; move(false); } }); if (nav.current) resize.observe(nav.current);
-    return () => resize.disconnect();
-  }, [tab, motion]);
-  const busy = requesting || !!state.busy;
+  const desktop = useDesktop(), { state, command, busy, connected } = desktop;
+  const [tab, setTab] = useState<Page>('Today'), [settings, setSettings] = useState(false), [settingsSection, setSettingsSection] = useState<'you' | 'connection'>('you');
+  const [slow, setSlow] = useState(false), main = useRef<HTMLElement>(null);
+  const scroll = useRef<Record<Page, number>>({ Today: 0, Practice: 0, Progress: 0 });
+  const lastPage = useRef<Page>('Today');
+  useEffect(() => { document.documentElement.dataset.motion = state.learning?.settings.motion ?? 'liquid'; }, [state.learning?.settings.motion]);
+  useEffect(() => { setSlow(false); if (!busy || desktop.pending === 'learn:prepare') return; const timer = setTimeout(() => setSlow(true), 450); return () => clearTimeout(timer); }, [busy, desktop.pending]);
   useEffect(() => {
-    if (!bridge) return;
-    let alive = true;
-    const refresh = async () => { try { const next = await bridge.state(); if (alive) setState(next); } catch { if (alive) setState(s => ({ ...s, message: 'Local app connection unavailable. Offline practice is available.' })); } };
-    void refresh(); const timer = setInterval(refresh, 1000);
-    return () => { alive = false; clearInterval(timer); };
-  }, []);
-  useEffect(() => { if (state.welcome) dialog.current?.showModal(); else dialog.current?.close(); }, [state.welcome]);
-  useEffect(() => { setSlow(false); if (!busy) return; const timer = setTimeout(() => setSlow(true), 2000); return () => clearTimeout(timer); }, [busy]);
-  const command = async (action: string, payload = {}) => {
-    if (!bridge) return;
-    setRequesting(true); setNotice('');
-    try { setState(await bridge.command(action, payload)); }
-    catch { setNotice('This action could not finish. Your saved answers are kept. Please try again.'); }
-    finally { setRequesting(false); }
+    if (lastPage.current !== tab) { window.scrollTo({ top: scroll.current[tab], behavior: 'instant' }); main.current?.focus({ preventScroll: true }); lastPage.current = tab; }
+  }, [tab]);
+  const navigate = (next: Page) => { if (next === tab) return; scroll.current[tab] = window.scrollY; changeScene(tab, next, () => setTab(next)); };
+  const start = async (mode = 'short', conceptId = '') => {
+    if (busy) return;
+    if (state.learning?.session || await command('learn:start', { mode, conceptId })) { scroll.current.Practice = 0; navigate('Practice'); }
   };
-  const start = (mode = 'short', conceptId = '') => { setTab('Practice'); if (!state.learning?.session) void command('learn:start', { mode, conceptId }); };
-  const completed = new Set(state.evidence.map(e => e.event));
+  const openConnection = () => { setSettingsSection('connection'); setSettings(true); };
+  const statusText = state.busy || ({ 'learn:generate': 'Preparing a question…', 'learn:feedback': 'Reading your answer…', 'learn:answer': 'Checking your answer…', 'learn:start': 'Getting your session ready…', 'learn:export': 'Choose where to save your export.', 'learn:delete': 'Waiting for your confirmation.' } as Record<string, string>)[desktop.pending] || 'Finishing up…';
   return <div className="app">
-    <header><a className="brand" href="#" onClick={e => { e.preventDefault(); setTab('Today'); }} aria-label="On the Spot home"><span className="mark" aria-hidden="true">●</span> On the Spot</a><div className="titlebar-right"><span className="local"><span/> On this PC</span><div className="window-controls"><button aria-label="Minimize window" onClick={()=>void command('window:minimize')}><span aria-hidden="true">−</span></button><button aria-label={state.maximized?'Restore window':'Maximize window'} onClick={()=>void command('window:maximize')}><span aria-hidden="true">{state.maximized?'❐':'□'}</span></button><button className="close-window" aria-label="Close window" onClick={()=>void command('window:close')}><span aria-hidden="true">×</span></button></div></div></header>
-    <nav aria-label="Main"><div className="nav-track" ref={nav}><span className="nav-pill" ref={pill} aria-hidden="true"/>{['Today', 'Practice', 'Progress'].map(name => <button key={name} className={tab === name ? 'selected' : ''} aria-current={tab === name ? 'page' : undefined} onClick={() => setTab(name)}>{name}</button>)}</div></nav>
-    <main data-page={tab}>
-      {notice && <p className="feedback" role="alert">{notice}</p>}
-      {tab !== 'Today' && (state.busy || state.lastError) && <div className="status" role="status">{slow && <span className="loading-dot" aria-hidden="true"/>}<span>{state.busy || state.message}</span>{state.busy && <button className="text-button" onClick={()=>void command('cancel')}>Cancel</button>}</div>}
-      {tab === 'Today' && <>
-        <div className="page-heading"><div><p className="eyebrow">TODAY</p><h1>{state.learning?.profile?.name ? `A fresh little start, ${state.learning.profile.name.split(' ')[0]}.` : 'Make a little room for learning.'}</h1><p className="intro">One idea. A few good questions. Your pace.</p></div><span className="today-date">{new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</span></div>
-        <LearningView state={state.learning} command={command} view="Today" busy={busy} start={start} aiEnabled={state.signedIn && state.planEnabled && !state.blocked}/>
-        <details className="connection-disclosure"><summary><span className="connection-summary-title"><span className="connection-dot"/>ChatGPT connection</span><span>{state.signedIn ? `${model.replace('gpt-','GPT ')} · ${state.reasoningEffort}` : 'Optional · connect your plan'}</span></summary><section className="connection" aria-labelledby="connection-title">
-          <div className="section-top"><span className="eyebrow">YOUR CONNECTION</span><span className="connection-badge">{state.signedIn ? state.planEnabled ? 'Connected' : 'Permission needed' : 'Optional'}</span></div>
-          <h2 id="connection-title">Bring your ChatGPT plan.</h2><p>Connect for personal explanations. Your existing plan covers eligible requests. Offline practice is always here.</p>
-          {state.accounts.length > 0 && <label className="field">ChatGPT account<select disabled={busy} value={state.active ?? ''} onChange={e => void command('select', { clientId: e.target.value })}>{state.accounts.map((a, i) => <option key={a.clientId} value={a.clientId}>{a.email} · Connection {i + 1}{a.signedIn ? '' : ' · Signed out'}</option>)}</select></label>}
-          <div className="connection-actions">
-            {!state.signedIn && <button className="chatgpt" disabled={!bridge || busy} onClick={() => void command('signIn', { clientId: state.active })}><img src="./chatgpt.svg" alt="" width="20" height="20"/>Continue with ChatGPT <span aria-hidden="true">↗</span></button>}
-            {state.signedIn && !state.planEnabled && <button className="chatgpt" disabled={busy} onClick={() => void command('signIn', { clientId: state.active, enablePlan: true })}><img src="./chatgpt.svg" alt="" width="20" height="20"/>Continue with ChatGPT</button>}
-            {state.signedIn && state.planEnabled && <><button className="secondary" disabled={busy || !!state.blocked} onClick={() => void command('models')}>{state.models.length ? 'Reload models' : 'Find available models'}</button><button className="text-button" disabled={busy} onClick={() => void command('refresh')}>Renew session</button></>}
-            {state.signedIn && <button className="text-button" disabled={busy} onClick={() => void command('signOut')}>Sign out</button>}
-            {state.accounts.length > 0 && <button className="text-button" disabled={busy} onClick={() => void command('signIn', { clientId: null })}>Add account</button>}
-          </div>
-          <p className="privacy">Preferred model: {model} · Reasoning: {state.reasoningEffort}</p>
-          {state.models.length > 0 && <div className="model-row"><label className="field">Using ChatGPT plan<select value={model} disabled={busy} onChange={e => void command('setModel', { model: e.target.value })}>{!state.models.some(m => m.slug === model) && <option value={model}>{model} · Not listed</option>}{state.models.map(m => <option key={m.slug} value={m.slug}>{m.name}</option>)}</select></label><button className="secondary" disabled={busy || !!state.blocked} onClick={() => void command('test', { model })}>Test connection</button></div>}
-          <div className="status" role="status" aria-live="polite">{slow && <span className="loading-dot" aria-hidden="true"/>}<span>{state.busy || state.message}</span>{state.busy && <button className="text-button" onClick={() => void command('cancel')}>Cancel</button>}</div>
-          {state.lastError && <details className="diagnostics"><summary>Connection details</summary><p>{state.lastError.code}{state.lastError.status ? ` · HTTP ${state.lastError.status}` : ''}{state.lastError.requestId ? ` · Request ${state.lastError.requestId}` : ''}</p></details>}
-          <div className="usage-row"><button className="text-button" disabled={!bridge} onClick={() => void command('usage')}>Manage usage <span aria-hidden="true">↗</span></button><span>Set a weekly app cap and keep credit spending off.</span></div>
-          {state.blocked && <button className="text-button" disabled={busy} onClick={() => void command('resume')}>I’ve checked usage and permissions — resume requests</button>}
-        </section></details><p className="privacy page-note">Your learning stays on this PC. Optional AI runs only when you ask.</p>
-      </>}
-      {tab === 'Practice' && <><div className="practice-heading"><span>Practice</span><span>No rush. Take your time.</span></div><LearningView state={state.learning} command={command} view="Practice" busy={busy} start={start} aiEnabled={state.signedIn && state.planEnabled && !state.blocked}/></>}
-      {tab === 'Progress' && <>
-        <div className="page-heading"><div><p className="eyebrow">PROGRESS</p><h1>Your practice, taking shape.</h1><p className="intro">What you have learned, and where to go next.</p></div></div><LearningView state={state.learning} command={command} view="Progress" busy={busy} start={start} aiEnabled={state.signedIn && state.planEnabled && !state.blocked}/><details className="connection-disclosure connection-history"><summary>Connection checks</summary><h2 className="connection-heading">Your connection history</h2>
-        <ol className="checklist">{steps.map(([event, label]) => <li key={event}><span className={completed.has(event) ? 'check done' : 'check'} aria-hidden="true">{completed.has(event) ? '✓' : '—'}</span><div><strong>{label}</strong><span>{completed.has(event) ? `Verified ${new Date(state.evidence.find(e => e.event === event)!.at).toLocaleDateString('en-GB')}` : 'Not verified yet'}</span></div></li>)}</ol>
-        <p className="privacy">Usage visibility needs your check in ChatGPT settings. Revocation is recorded only after a successful sign-out.</p><div className="connection-actions"><button className="secondary" disabled={!bridge} onClick={() => void command('usage')}>Open ChatGPT usage ↗</button><button className="text-button" disabled={!bridge || busy || !completed.has('completed_response')} onClick={() => void command('usageConfirmed')}>I can see On the Spot usage</button></div></details>
-      </>}
-    </main><footer><span>Small steps. Your pace.</span><span>Your learning · on this PC</span></footer>
-    <dialog ref={dialog} onCancel={e => { e.preventDefault(); void command('welcome'); }}><h2>You’re using your ChatGPT plan</h2><p>Eligible AI requests in On the Spot use your ChatGPT plan. Manage this app’s weekly cap in ChatGPT settings and keep credit spending off.</p><button className="primary" onClick={() => void command('welcome')}>Got it</button></dialog>
+    <a className="skip-link" href="#main">Skip to content</a>
+    <header className="titlebar"><button className="brand" aria-label="On the Spot home" onClick={() => navigate('Today')}><span className="brand-mark" aria-hidden="true">{Array.from({ length: 9 }, (_, i) => <i key={i}/>)}</span><span>on the <strong>spot.</strong></span></button><div className="titlebar-right"><span className="local-label"><span className="status-dot"/>{connected ? 'LOCAL FIRST' : 'DESKTOP APP'}</span>{connected && <div className="window-controls"><button aria-label="Minimize window" onClick={() => void command('window:minimize')}><Icon name="minus" size={15}/></button><button aria-label={state.maximized ? 'Restore window' : 'Maximize window'} onClick={() => void command('window:maximize')}><Icon name="window" size={13}/></button><button className="close-window" aria-label="Close window" onClick={() => void command('window:close')}><Icon name="close" size={16}/></button></div>}</div></header>
+    <div className="navigation-bar"><nav aria-label="Main">{(['Today', 'Practice', 'Progress'] as Page[]).map((name, i) => <button key={name} className={tab === name ? 'selected' : ''} aria-current={tab === name ? 'page' : undefined} onClick={() => navigate(name)}><span className="nav-index">0{i + 1}</span>{name}<span className="nav-dot" aria-hidden="true"/></button>)}</nav><div className="nav-tools"><button className={`connection-trigger ${state.signedIn && state.planEnabled ? 'is-connected' : ''}`} onClick={openConnection}><span className="status-dot"/><span>ChatGPT</span><span className="connection-trigger-state">{state.signedIn && state.planEnabled ? 'connected' : 'optional'}</span></button><button className="icon-button settings-trigger" aria-label="Settings" onClick={() => { setSettingsSection('you'); setSettings(true); }}><Icon name="settings"/></button></div></div>
+    <div className="status-region" aria-live="polite" aria-atomic="true">{desktop.notice ? <div className="notice"><span>{desktop.notice}</span><button className="icon-button" aria-label="Dismiss message" onClick={desktop.dismissNotice}><Icon name="close" size={16}/></button></div> : slow ? <div className="working"><span className="working-dot" aria-hidden="true"/><span>{statusText}</span>{state.busy && <button className="text-button" onClick={() => void command('cancel')}>Cancel</button>}</div> : null}</div>
+    <main ref={main} id="main" tabIndex={-1} data-page={tab}>
+      {desktop.unavailable && <div className="connection-error" role="alert"><span>The local connection dropped. Your draft is kept here.</span><button className="text-button" onClick={() => void desktop.retry()}>Retry connection</button></div>}
+      {desktop.loading && !state.learning ? <div className="startup" role="status"><span className="brand-mark" aria-hidden="true">{Array.from({ length: 9 }, (_, i) => <i key={i}/>)}</span><p>Opening your practice space…</p></div> : state.learning ? <LearningView state={state.learning} command={command} view={tab} busy={busy || desktop.unavailable} start={(mode, topic) => void start(mode, topic)} aiEnabled={state.signedIn && state.planEnabled && !state.blocked} openConnection={openConnection} voiceAvailable={!!state.voice?.available}/> : <section className="browser-state"><span className="eyebrow">ON THE SPOT</span><h1>A little space<br/>to <em>think.</em></h1><p className="lede">{connected ? 'Your local learning record is not available yet.' : 'Your practice lives in the desktop app.'}</p><p className="muted">{connected ? 'Retry the connection to open your saved sessions.' : 'Open On the Spot on your PC to start a session, use local speech and keep your learning encrypted. This browser view does not save or simulate your learning.'}</p>{connected && <button className="secondary" onClick={() => void desktop.retry()}>Retry connection</button>}</section>}
+    </main>
+    <footer className="app-footer"><span><span className="small-spot"/>No rush. Just practice.</span><span>{connected ? 'ON THIS PC / YOUR SPACE' : 'ON THE SPOT / DESKTOP'}</span></footer>
+    <Sheet open={settings} close={() => setSettings(false)} title="Your space"><div className="sheet-tabs" role="group" aria-label="Settings section"><button aria-pressed={settingsSection === 'you'} className={settingsSection === 'you' ? 'selected' : ''} onClick={() => setSettingsSection('you')}>You & your practice</button><button aria-pressed={settingsSection === 'connection'} className={settingsSection === 'connection' ? 'selected' : ''} onClick={() => setSettingsSection('connection')}>ChatGPT</button></div>{settingsSection === 'connection' ? <ConnectionPanel state={state} command={command} busy={busy} connected={connected}/> : state.learning ? <><section className="settings-section"><span className="eyebrow">AT YOUR PACE</span><PracticeSettings state={state.learning} busy={busy} command={command}/></section><Disclosure title="Your profile"><ProfileForm key={state.learning.profile ? 'existing' : 'new'} profile={state.learning.profile} busy={busy} command={command}/></Disclosure><Disclosure title="Your data"><p className="muted">Your learning record is encrypted on this PC. Exported JSON is readable, so save it somewhere private.</p><div className="actions"><button className="secondary" disabled={busy} onClick={() => void command('learn:export')}>Export learner data</button><button className="text-button danger" disabled={busy} onClick={() => void command('learn:delete')}>Delete learner data</button></div><p className="micro">Deleting asks for confirmation. Your ChatGPT connection and exported files are kept.</p></Disclosure></> : <p className="muted">Open the desktop app to manage your practice settings.</p>}</Sheet>
+    <Sheet open={state.welcome} close={() => void command('welcome')} title="ChatGPT is connected" kind="welcome-sheet"><p className="lede">Your plan. Your choice.</p><p className="muted">Eligible AI requests use your ChatGPT plan. Check this app’s weekly cap and keep credit spending off in ChatGPT settings.</p><button className="primary" onClick={() => void command('welcome')}>Continue<Icon name="check" size={17}/></button></Sheet>
   </div>;
 }
 createRoot(document.getElementById('root')!).render(<App/>);
