@@ -1,2 +1,8 @@
 import { defineConfig } from 'vite';
-export default defineConfig({ base: './', server: { host: '127.0.0.1' } });
+import { previewBridge } from './design/preview-bridge.mjs';
+
+export default defineConfig({
+  base: './',
+  plugins: [previewBridge()],
+  server: { host: '127.0.0.1' },
+});

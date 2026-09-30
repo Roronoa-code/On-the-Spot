@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "strictCsp": true,
+  "realLearningAttempts": 1,
+  "fonts": [
+    {
+      "family": "Manrope",
+      "status": "loaded"
+    },
+    {
+      "family": "IBM Plex Mono",
+      "status": "loaded"
+    }
+  ],
+  "errors": [],
+  "resourceCount": 6,
+  "mockedUiChecks": [
+    "Pending models status and cancellation remain usable in Settings.",
+    "Resolved AI failures appear on the learning page."
+  ],
+  "limitations": "Native storage, speech, live connection and operating-system controls are outside this renderer check. Connection UI outcomes are explicitly simulated."
+}

@@ -1,0 +1,53 @@
+{
+  "passed": true,
+  "checks": [
+    "Onboarding saves a real preview profile and shows the session control.",
+    "Session-size radio keys update the four- and twelve-exercise dial.",
+    "Settings uses modal focus, Escape dismisses it and restores focus; native-only connection controls stay disabled in preview.",
+    "Repeated keyboard navigation interrupts real Fluid View Transitions, retains the draft and settles one page with an aligned navigation marker.",
+    "Drafts survive tab changes; real hints, grading, dispute and correction work.",
+    "All four exercise families complete; skips remain unscored and sequence recall is gated.",
+    "Completed history and preferences survive renderer reload in the preview.",
+    "Today, Practice and Progress render without page overflow at 1080, 390 and 360 pixels; rapid navigation and reduced motion remain usable.",
+    "A delayed real session start respects a newer navigation choice; the active exercise remains usable at 390 pixels.",
+    "JSON export contains the actual attempts; cancel preserves data and confirmed deletion resets only preview data."
+  ],
+  "browser": "153.0.8010.0",
+  "testedAt": "2026-09-30T20:39:27.838Z",
+  "limitations": [
+    "Browser verification uses the real learning engine with in-memory preview storage.",
+    "Windows encryption, native window controls, live ChatGPT authentication and microphone transcription require desktop verification."
+  ],
+  "errors": [],
+  "externalRequests": [],
+  "accessibility": [
+    {
+      "screen": "01-onboarding-desktop",
+      "violations": []
+    },
+    {
+      "screen": "02-today-desktop",
+      "violations": []
+    },
+    {
+      "screen": "02-settings-desktop",
+      "violations": []
+    },
+    {
+      "screen": "03-practice-desktop",
+      "violations": []
+    },
+    {
+      "screen": "04-feedback-desktop",
+      "violations": []
+    },
+    {
+      "screen": "07-progress-desktop",
+      "violations": []
+    },
+    {
+      "screen": "10-active-practice-390",
+      "violations": []
+    }
+  ]
+}

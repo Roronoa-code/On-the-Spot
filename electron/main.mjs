@@ -26,7 +26,7 @@ else {
   session.defaultSession.setPermissionRequestHandler((web, permission, callback, details) => callback(web === window?.webContents && microphoneConsent && permission === 'media' && !!details.mediaTypes?.length && details.mediaTypes.every(type => type === 'audio')));
   session.defaultSession.setPermissionCheckHandler((web, permission, _origin, details) => web === window?.webContents && microphoneConsent && permission === 'media' && details.mediaType !== 'video');
   const secondDisplay = screen.getAllDisplays()[1]?.workArea;
-  window = new BrowserWindow({ width: 1080, height: 800, minWidth: 360, minHeight: 560, backgroundColor: '#161616',
+  window = new BrowserWindow({ width: 1080, height: 800, minWidth: 360, minHeight: 560, backgroundColor: '#141716',
     ...(secondDisplay ? { x: secondDisplay.x + 30, y: secondDisplay.y + 30 } : {}),
     show: false, frame: false, autoHideMenuBar: true,
     webPreferences: { preload: join(root, 'electron', 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true,
@@ -102,5 +102,4 @@ else {
     app.quit();
   });
 }
-
 

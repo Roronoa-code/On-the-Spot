@@ -1,1 +1,22 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self';"><title>On the Spot</title><link rel="stylesheet" href="prompt.css"></head><body><main><span class="mark" aria-hidden="true">●</span><p class="brand">On the Spot</p><h1 id="title">Your choice</h1><p id="message"></p><p id="detail"></p><div class="actions"><button id="cancel" autofocus>Not now</button><button id="confirm">Continue</button></div></main><script src="prompt.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self';">
+    <title>On the Spot</title>
+    <link rel="stylesheet" href="prompt.css">
+  </head>
+  <body>
+    <main role="dialog" aria-modal="true" aria-labelledby="title" aria-describedby="message detail">
+      <header class="prompt-brand"><span class="mark" aria-hidden="true"></span><span>On the Spot</span><span class="local-note">On this PC</span></header>
+      <div class="prompt-copy" id="copy">
+        <h1 id="title">Your choice</h1>
+        <p id="message"></p>
+        <p id="detail"></p>
+      </div>
+      <div class="actions"><button id="cancel" type="button" autofocus>Not now</button><button id="confirm" type="button">Continue</button></div>
+    </main>
+    <script src="prompt.js"></script>
+  </body>
+</html>
