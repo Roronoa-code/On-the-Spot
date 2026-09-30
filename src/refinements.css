@@ -1,0 +1,13 @@
+/* Interaction and density refinements after the first rendered review. */
+::view-transition{pointer-events:none}
+.spot-tick circle{transition:cx var(--slow) var(--ease),cy var(--slow) var(--ease),r var(--normal) var(--ease),fill var(--fast)}
+.exercise-prompt:focus,.session-end h1:focus{outline:none}
+.sheet-status:empty{display:none}.sheet-status{position:sticky;top:82px;z-index:3;margin:15px 0;background:var(--surface)}.sheet-status .working,.sheet-status .notice{box-shadow:none;max-width:100%;width:100%;flex-wrap:wrap}
+.speech-unavailable{font-size:11px;margin:2px 0 13px;max-width:460px}
+@media(min-width:721px){.desk-copy{padding-top:27px;padding-bottom:25px}.desk-copy h1{font-size:64px;margin:18px 0 14px}.session-size{margin-top:21px}.family-strip button{min-height:67px}.launch-spot{width:278px;height:278px}.spot-number{font-size:82px}.compact-spot .spot-number{font-size:48px}.page-top{margin-bottom:24px}}
+@media(min-width:721px) and (max-width:900px){.desk-copy h1{font-size:53px}.launch-spot{width:247px;height:247px}.spot-number{font-size:73px}.compact-spot .spot-number{font-size:45px}}
+@media(max-height:820px) and (min-width:721px){.titlebar{height:49px}.navigation-bar{min-height:66px}main{padding-top:23px}.page-top{margin-bottom:20px}.desk-copy h1{font-size:58px}.desk-copy .lede{font-size:13px}.desk-copy{padding-top:24px;padding-bottom:24px}.session-size{margin-top:16px}.size-options label{padding-top:10px;padding-bottom:10px}.family-strip button{min-height:60px}.instrument-label{top:22px}.launch-spot{margin-bottom:22px}.exercise-prompt{font-size:30px}.teaching-note{margin-bottom:19px}.sheet-status{top:82px}}
+@media(max-width:480px){.desk-copy h1{font-size:55px}.desk-copy{padding-top:22px}.launch-spot{width:224px;height:224px;margin-top:9px;margin-bottom:16px}.spot-number{font-size:73px}.spot-action{bottom:2px}.desk-spot{padding-top:32px;padding-bottom:22px}.compact-spot .spot-number{font-size:29px}.sheet-status{top:72px}}
+/* These colours belong to the memory task, never to decorative chrome. */
+.sequence [data-colour=red]{color:#ec706b}.sequence [data-colour=blue]{color:#82a9e8}.sequence [data-colour=green]{color:#98c795}.sequence [data-colour=yellow]{color:#ead281}.sequence [data-colour=purple]{color:#bc99d6}.sequence [data-colour=orange]{color:#eaa06a}.sequence [data-colour=pink]{color:#e8a8c1}.sequence [data-colour=white]{color:#f4f1e9}.sequence [data-colour=black]{color:#161713;-webkit-text-stroke:1px #a3a497}
+.skip-link{clip-path:inset(50%)}.skip-link:focus{clip-path:none}

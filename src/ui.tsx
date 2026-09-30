@@ -49,6 +49,7 @@ export function Sheet({ open, close, title, children, kind = '' }: { open: boole
         lock.current = document.documentElement.style.overflow;
         document.documentElement.style.overflow = 'hidden';
         node.showModal();
+        node.scrollTop = 0;
       }
       const base = kind === 'welcome-sheet' ? 'translate(-50%, -50%)' : 'translateX(0)';
       if (!reduce) {
@@ -99,11 +100,14 @@ export function Spot({ count, current = 0, compact = false, onClick, disabled, l
 
 type TransitionDocument = Document & { startViewTransition?: (update: () => void) => { skipTransition(): void; finished: Promise<void> } };
 let transition: ReturnType<NonNullable<TransitionDocument['startViewTransition']>> | undefined;
+let sceneVersion = 0;
 export function changeScene(from: Page, to: Page, update: () => void) {
-  transition?.skipTransition();
+  const version = ++sceneVersion, interrupted = !!transition;
+  transition?.skipTransition(); transition = undefined;
   document.documentElement.dataset.direction = ['Today', 'Practice', 'Progress'].indexOf(to) >= ['Today', 'Practice', 'Progress'].indexOf(from) ? 'forward' : 'back';
   const doc = document as TransitionDocument;
-  if (!doc.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches || doc.documentElement.dataset.motion === 'gentle') { update(); return; }
-  transition = doc.startViewTransition(() => flushSync(update));
-  void transition.finished.catch(() => {});
+  if (interrupted || !doc.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches || doc.documentElement.dataset.motion === 'gentle') { flushSync(update); return; }
+  const current = doc.startViewTransition(() => { if (version === sceneVersion) flushSync(update); });
+  transition = current;
+  void current.finished.catch(() => {}).finally(() => { if (transition === current) transition = undefined; });
 }

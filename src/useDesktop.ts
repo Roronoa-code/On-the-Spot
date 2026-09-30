@@ -8,11 +8,11 @@ export function useDesktop() {
   const [loading, setLoading] = useState(!!bridge), [unavailable, setUnavailable] = useState(false);
   const revision = useRef(0), inFlight = useRef(0), reading = useRef(false), alive = useRef(true);
   const read = useCallback(async () => {
-    if (!bridge || reading.current || inFlight.current) return;
+    if (!bridge || reading.current) return;
     reading.current = true; const version = revision.current;
     try {
       const next = await bridge.state();
-      if (alive.current && version === revision.current && !inFlight.current) { setState(next); setUnavailable(false); }
+      if (alive.current && version === revision.current) { setState(next); setUnavailable(false); }
     } catch { if (alive.current && version === revision.current) setUnavailable(true); }
     finally { reading.current = false; if (alive.current) setLoading(false); }
   }, []);
@@ -32,10 +32,11 @@ export function useDesktop() {
     if (!interrupt) { setPending(action); setNotice(''); }
     try {
       const next = await bridge.command(action, payload);
-      if (alive.current && next && version === revision.current) { setState(next); setUnavailable(false); }
+      // Polls may report live server activity, but may never overwrite this response.
+      if (alive.current && next && version === revision.current) { revision.current++; setState(next); setUnavailable(false); }
       return !!next;
     } catch {
-      if (alive.current && !action.startsWith('window:')) setNotice('That did not finish. Your answer is still here. Try again.');
+      if (alive.current && !action.startsWith('window:')) setNotice(action === 'learn:answer' ? 'That did not finish. Your answer is still here. Try again.' : 'That did not finish. Please try again.');
       return false;
     } finally {
       inFlight.current--;

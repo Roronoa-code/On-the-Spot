@@ -1,7 +1,5 @@
 name: UI and learning checks
 on:
-  push:
-    branches: [design/spot-instrument]
   pull_request:
   workflow_dispatch:
 permissions:
