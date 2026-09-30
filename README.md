@@ -2,6 +2,18 @@
 
 Personal Windows learning and recall app. Electron, React/TypeScript and local SQLite. Today, Practice and Progress contain the complete local learning loop.
 
+## Practice instrument interface
+
+The source now uses a warm ink, chalk and coral visual system built around a segmented session dial. Today, Practice and Progress share the same shell; the dial becomes the current exercise marker, and settings open beside the current task. Draft answers and disclosure state survive tab changes. Fonts are bundled locally.
+
+See [design decisions and interaction rules](design/README.md). Run `npm run dev` for an isolated browser preview of the actual local learning engine. Preview data stays in temporary server memory, independent of the Windows app. ChatGPT, protected desktop storage and local microphone transcription require the desktop app.
+
+![The implemented Today screen](design/revamp/today-desktop.png)
+
+[Practice](design/revamp/practice-desktop.png) · [Progress](design/revamp/progress-desktop.png) · [Settings](design/revamp/settings-desktop.png) · [Mobile](design/revamp/today-mobile.png) · [Motion walkthrough](design/revamp/walkthrough.mp4)
+
+The downloads below are the existing **v0.2.1 release**. Build the updated source to use the new interface; this source change does not replace published installers.
+
 ## Complete app downloads
 
 - [Windows installer — complete app with offline voice](https://github.com/Roronoa-code/On-the-Spot/releases/download/v0.2.1/On-the-Spot-Setup-0.2.1.exe)
@@ -17,7 +29,7 @@ The complete application files are attached to the [public release](https://gith
 Download **On-the-Spot-Setup-0.2.1.exe** from the [GitHub release](https://github.com/Roronoa-code/On-the-Spot/releases/tag/v0.2.1) and run it on 64-bit Windows. This is the complete app, including the offline speech model and recognition runtime. No separate speech download or API key is needed to use the installed app. The installer is unsigned. Updates and uninstall preserve learner and account data.
 
 1. Fill in your interests, goal and preferred language. Edit them later in Progress.
-2. In Today, choose a short or daily session and optionally a topic. Teaching comes before unfamiliar material and prerequisites.
+2. In Today, choose Quick or Daily and optionally a topic. Teaching comes before unfamiliar material and prerequisites.
 3. Type or choose Speak answer. Allow the microphone when asked. Stop and transcribe, then edit the text before checking your answer. Teach me, Give a hint and Skip are available.
 4. Finish for a summary and optional conversation task. Close and reopen to continue a session or see your next review.
 
@@ -25,7 +37,7 @@ Sessions are untimed. Durations are approximate: four exercises for a short sess
 
 ## Optional ChatGPT plan connection
 
-Choose Continue with ChatGPT in Today and sign in in your system browser. Use the account whose plan you want to use. This does not import conversations or memories. Set a weekly app cap in Manage usage and keep credit spending off.
+Open Settings, choose Continue with ChatGPT and sign in in your system browser. Use the account whose plan you want to use. This does not import conversations or memories. Set a weekly app cap in Manage usage and keep credit spending off.
 
 The requested preference is **GPT 6 Luna at max reasoning**, with **GPT 5.6 Luna at max** only on a model-availability error. Usage limits and network failures never trigger that fallback. GPT 6 Luna at max passed an authenticated response, grounded lesson generation and provisional-feedback check on 30 September 2026; no fallback was needed. The catalog can omit a model that direct inference accepts; the saved preference can still be tested directly.
 
@@ -39,7 +51,7 @@ Check app-usage attribution in ChatGPT settings: an enabled app limit is not usa
 
 Unknown concepts are taught and need a comprehension check before spaced review. Learned concepts use ts-fsrs default parameters. Misses bring reviews forward; repeated errors return to prerequisites. Missing, skipped, unclear and disputed answers do not count as forgetting. Labels and results are correctable in Progress.
 
-Reasoning and attention have separate levels. Three unaided successes at the same level raise difficulty; two misses lower it. Progress compares the same task type and level, showing first/latest examples. These are task results, not health, brain-age or intelligence scores. Due-first ordering and maximum new concepts are configurable. Liquid navigation uses the approved moving highlight; Gentle and OS reduced motion are available. Feedback uses the approved soft, letter-by-letter reveal. Stop reveal retains the visible text with an Interrupted marker; Show all reveals the complete validated result. This is a presentation animation after validation, not partial AI output.
+Reasoning and attention have separate levels. Three unaided successes at the same level raise difficulty; two misses lower it. Progress compares the same task type and level, showing first/latest examples. These are task results, not health, brain-age or intelligence scores. Due-first ordering and maximum new concepts are configurable. Fluid navigation moves the selected rail surface from its current position, with a shared session ring between views. Gentle and OS reduced motion are available in Settings. Feedback uses the approved soft, letter-by-letter reveal. Stop reveal retains the visible text and its reserved layout space with an Interrupted marker; Show all reveals the complete validated result. This is a presentation animation after validation, not partial AI output.
 
 Arithmetic, estimation, practical constraints and sequences have local, checkable answers. Open explanations use a provisional word rubric, including partial coverage. Alternate valid wording can be corrected. Generated code is never executed.
 
@@ -72,7 +84,21 @@ The [GitHub release](https://github.com/Roronoa-code/On-the-Spot/releases/tag/v0
 
 Alternatively, download the Windows x64 CPU archive from the [whisper.cpp v1.8.3 release](https://github.com/ggml-org/whisper.cpp/releases/tag/v1.8.3). Extract its `Release` folder into `voice-runtime/Release`. Download [ggml-base.bin](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin) into `voice-runtime/ggml-base.bin`. Verify both downloads against the SHA-256 hashes in THIRD-PARTY-NOTICES.txt. Typing and offline learning work without these speech files.
 
-The current UI layout comparison is included in `design/layout-preview.html`. Open it in a browser to try both directions. It uses sample content and does not change learner data; the released app uses the current monochrome UI.
+The earlier layout comparison remains in `design/layout-preview.html` as a historical concept. The implemented redesign is in `src`, with its decisions in `design/README.md`. Use `npm run dev` to try the actual learning UI with separate temporary preview data.
+
+Browser verification of the actual local learning flow (requires an installed Playwright browser):
+
+```sh
+npm install --no-save playwright
+npx playwright install chromium
+npm run test:ui
+npm run test:voice
+npm run test:renderer
+```
+
+The browser test starts its own loopback preview, completes a session using the real learning engine, checks responsive layouts and preserves screenshots in `artifacts/ui`. `OTS_BROWSER_EXECUTABLE` can point to an existing Chromium executable. These checks do not verify Windows encryption, account sign-in, physical audio or a packaged installer.
+
+The voice test uses explicit microphone, transcription and voice fixtures to check lifecycle races and native prompt layout. The renderer test builds the production bundle and exercises it under its original CSP, with the real learning engine supplied through a test binding. To add automated accessibility scans, install `axe-core` and set `OTS_AXE_SOURCE` to `node_modules/axe-core/axe.min.js` when running `test:ui`.
 
 Optional hidden desktop verification with an available Playwright install:
 
@@ -92,6 +118,5 @@ Node checks cover OAuth/stream failures, usage limits, malformed schemas, inject
 - [Renewal and revocation](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions)
 - [whisper.cpp](https://github.com/ggml-org/whisper.cpp)
 - [ts-fsrs](https://github.com/open-spaced-repetition/ts-fsrs)
-
 
 

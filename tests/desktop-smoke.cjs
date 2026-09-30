@@ -1,4 +1,5 @@
-// Run with PLAYWRIGHT_MODULE pointing to an available Playwright install.
+// Windows-only native check; requires the complete offline speech runtime.
+// Run after npm run build, with PLAYWRIGHT_MODULE pointing to an available Playwright install.
 const { _electron } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -25,13 +26,15 @@ const path = require('node:path');
     });
     assert.deepEqual(protection, { encrypted: true, sandbox: true, contextIsolation: true, nodeIntegration: false });
     const encrypted = fs.readFileSync(path.join(directory, 'accounts.enc')); assert.equal(encrypted.includes(Buffer.from('hostId')), false);
-    await page.locator('input[name="name"]').fill('Quiet test');
-    await page.locator('input[name="interests"]').fill('Words and planning');
-    await page.locator('input[name="goal"]').fill('Explain ideas clearly');
-    await page.locator('form').evaluate(form => form.requestSubmit());
-    await page.waitForFunction(() => !!document.querySelector('.today-layout'));
-    await page.getByRole('button', {name: 'Start session', exact:false}).evaluate(button => button.click());
-    await page.waitForSelector('#answer');
+    const profile = page.locator('.profile-form:visible');
+    await profile.waitFor();
+    await profile.locator('input[name="name"]').fill('Quiet test');
+    await profile.locator('input[name="interests"]').fill('Words and planning');
+    await profile.locator('input[name="goal"]').fill('Explain ideas clearly');
+    await profile.evaluate(form => form.requestSubmit());
+    await page.locator('.today-layout:visible').waitFor();
+    await page.getByRole('button', {name: 'Start session', exact:true}).evaluate(button => button.click());
+    await page.locator('#answer:visible').waitFor();
     for (let i=0;i<4;i++) {
       const state=await page.evaluate(() => window.onTheSpot.state());
       const item=state.learning.session.exercise;
@@ -47,29 +50,41 @@ const path = require('node:path');
       if(item.family==='words') answer='umbrella';
       if(item.family==='reason') { const numbers=item.prompt.match(/£(\d+)/g).map(x=>Number(x.slice(1))); answer=String(numbers[0]-numbers[1]); }
       if(item.family==='attention') { answer=item.sequence.join(' '); await page.getByRole('button',{name:'Hide sequence and answer'}).evaluate(b=>b.click()); }
-      await page.locator('#answer').fill(answer);
+      await page.locator('#answer:visible').fill(answer);
       if(i===0)await page.emulateMedia({reducedMotion:'no-preference'});
-      await page.locator('form').evaluate(form=>form.requestSubmit());
-      await page.waitForFunction(() => !!document.querySelector('.result'));
+      // Progress retains a hidden profile form; submit only the active answer form.
+      await page.locator('form.answer-form:visible').evaluate(form=>form.requestSubmit());
+      const result = page.locator('.result:visible');
+      await result.waitFor();
       if(i===0){
+        const feedback = result.locator('.feedback');
         await electron.evaluate(async({BrowserWindow})=>{await BrowserWindow.getAllWindows()[0].webContents.capturePage(undefined,{stayHidden:true,stayAwake:true});});
         await page.waitForTimeout(250);
-        const partial=await page.locator('.bubble-letter.revealed').count();assert.ok(partial>0);
-        assert.ok(partial<await page.locator('.bubble-letter').count());
+        const partial=await feedback.locator('.bubble-letter.revealed').count();assert.ok(partial>0);
+        assert.ok(partial<await feedback.locator('.bubble-letter').count());
         const soft=await electron.evaluate(async({BrowserWindow})=>(await BrowserWindow.getAllWindows()[0].webContents.capturePage(undefined,{stayHidden:true,stayAwake:true})).toPNG().toString('base64'));
-        assert.ok(await page.locator('.bubble-letter.revealed').first().evaluate(e=>Number(getComputedStyle(e).opacity)>0));
+        assert.ok(await feedback.locator('.bubble-letter.revealed').first().evaluate(e=>Number(getComputedStyle(e).opacity)>0));
         fs.writeFileSync(path.join(root,'artifacts','feedback-soft-mid.png'),Buffer.from(soft,'base64'));
-        await page.getByRole('button',{name:'Stop reveal',exact:true}).evaluate(b=>b.click());
-        await page.waitForTimeout(100);const stopped=await page.locator('.feedback').innerText();
-        await page.waitForTimeout(150);assert.equal(await page.locator('.feedback').innerText(),stopped);assert.match(stopped,/Interrupted/);
-        await page.getByRole('button',{name:'Show all',exact:true}).evaluate(b=>b.click());
-        assert.equal(await page.locator('.feedback [aria-hidden=true]').textContent(),(await page.evaluate(()=>window.onTheSpot.state())).learning.session.result.feedback);
+        await result.getByRole('button',{name:'Stop reveal',exact:true}).evaluate(b=>b.click());
+        await feedback.locator('.reveal-stopped').waitFor();
+        assert.equal(await feedback.locator('.reveal-stopped').textContent(),'Interrupted');
+        const visibleLetters = node => [...node.querySelectorAll('.bubble-letter')].filter(letter=>Number(getComputedStyle(letter).opacity)>0).map(letter=>letter.textContent).join('');
+        const stopped=await feedback.evaluate(visibleLetters);
+        await page.waitForTimeout(150);
+        assert.equal(await feedback.evaluate(visibleLetters),stopped, 'Stopping feedback must freeze the visible characters.');
+        await result.getByRole('button',{name:'Show all',exact:true}).evaluate(b=>b.click());
+        assert.equal(await feedback.locator(':scope > span[aria-hidden="true"]').textContent(),(await page.evaluate(()=>window.onTheSpot.state())).learning.session.result.feedback);
         await page.emulateMedia({reducedMotion:'reduce'});
       }
-      await page.getByRole('button',{name:i===3?'Finish session':'Next exercise',exact:true}).evaluate(b=>b.click());
-      await page.waitForFunction(i => !document.querySelector('.result') || i===3, i);
+      await result.getByRole('button',{name:i===3?'Finish session':'Next exercise',exact:true}).evaluate(b=>b.click());
+      await page.waitForFunction(async index => {
+        const value = await window.onTheSpot.state();
+        return index === 3 ? !value.learning.session && value.learning.summary?.count === 4 : value.learning.session?.index === index + 1 && !value.learning.session.result;
+      }, i);
+      if (i < 3) await page.locator('#answer:visible').waitFor();
     }
-    await page.waitForFunction(() => document.body.textContent.includes('4 exercises completed'));
+    await page.locator('.session-finish:visible').getByRole('heading',{name:'Round complete.',exact:true}).waitFor();
+    assert.match(await page.locator('.session-finish:visible .finish-description').textContent(),/4 exercises completed/);
     const learnerState=await page.evaluate(() => window.onTheSpot.state());
     assert.equal(learnerState.learning.summary.correct,4);
     assert.equal(learnerState.learning.progress[0].learned,true);
@@ -78,12 +93,13 @@ const path = require('node:path');
     const protectedLearner=Buffer.from(learnerDB.prepare('SELECT protected FROM learner').get().protected); learnerDB.close();
     assert.equal(protectedLearner.includes(Buffer.from('Quiet test')),false);
     assert.equal(protectedLearner.includes(Buffer.from('rough answer')),false);
-    // Freeze decorative CSS transitions for captures of a hidden compositor.
+    // Freeze interface transitions for captures of a hidden compositor.
     await page.emulateMedia({ reducedMotion: 'reduce' });
     for (const width of [1080, 650, 390]) {
       await electron.evaluate(({ BrowserWindow }, width) => BrowserWindow.getAllWindows()[0].setContentSize(width, 860), width);
       for (const tab of ['Today', 'Practice', 'Progress']) {
-        await page.locator('nav button').filter({ hasText: tab }).evaluate(button => button.click());
+        await page.getByRole('navigation',{name:'Main'}).getByRole('button',{name:tab,exact:true}).evaluate(button => button.click());
+        await page.waitForFunction(tab=>document.querySelector('main').dataset.page===tab,tab);
         await page.waitForTimeout(350);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `${tab} overflows at ${width}`);
         const png = await electron.evaluate(async ({ BrowserWindow }) => (await BrowserWindow.getAllWindows()[0].webContents.capturePage(undefined, { stayHidden: true, stayAwake: true })).toPNG().toString('base64'));
@@ -105,4 +121,3 @@ const path = require('node:path');
     console.log('Desktop smoke passed: hidden Electron runtime, protected storage, isolated IPC, complete encrypted offline session, 3 screens at 3 widths, reduced motion.');
   } finally { await electron.close(); fs.rmSync(directory, { recursive: true, force: true }); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
-

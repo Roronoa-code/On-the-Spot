@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 export function prompt(parent, root, { title, message, detail, confirm }) {
   return new Promise(resolve => {
     const file = join(root, 'dist', 'prompt.html');
-    const child = new BrowserWindow({ parent, modal: true, frame: false, width: 480, height: 350, resizable: false, show: false, backgroundColor: '#161616',
+    const child = new BrowserWindow({ parent, modal: true, frame: false, width: 480, height: 350, resizable: false, show: false, backgroundColor: '#141716',
       webPreferences: { preload: join(root, 'electron', 'prompt-preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false } });
     let answered = false;
     const finish = value => { if (answered) return; answered = true; ipcMain.removeListener('spot:prompt', reply); resolve(value); if (!child.isDestroyed()) child.close(); };
@@ -22,5 +22,4 @@ export function prompt(parent, root, { title, message, detail, confirm }) {
     child.loadFile(file).catch(()=>finish(false));
   });
 }
-
 

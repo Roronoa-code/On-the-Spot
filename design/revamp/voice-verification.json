@@ -1,0 +1,17 @@
+{
+  "passed": [
+    "No automatic mic or audio; nine speech languages plus detection; collapsed settings are inert",
+    "Cancelling pending consent prevents late microphone start and releases grading lock",
+    "Late permission stream is stopped without clobbering the newer capture",
+    "Only one transcription per capture; real 16 kHz WAV; typed changes preserved until explicit append",
+    "Existing typed answer requires explicit replacement",
+    "Hiding the retained Practice pane releases mic and does not restart it on return",
+    "Cancellation ignores stale transcription and waits for process cleanup before a new capture",
+    "Read-aloud selects only local voices, stops on demand, and cancels on navigation",
+    "59-second sample limit auto-transcribes once; silent input returns a useful retry state",
+    "390px layout fits, voice controls retain 44px targets, and system/gentle motion settings are honoured",
+    "Both 480×350 native-dialog pages fit with bundled typography, cancel autofocus, focus wrap, and one Escape cancellation",
+    "Constrained dialog keeps actions visible and overflowing text keyboard-scrollable; confirmation still works"
+  ],
+  "errors": []
+}
