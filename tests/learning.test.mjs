@@ -1,0 +1,112 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { DatabaseSync } from 'node:sqlite';
+import { Learning } from '../electron/learning.mjs';
+import { grade, exercise } from '../electron/content.mjs';
+
+test('complete offline session survives reopen; duplicates, skips and corrections preserve recall', () => {
+  const db = new DatabaseSync(':memory:');
+  const storage = { db, crypto: { encryptString: s => Buffer.from(s), decryptString: b => b.toString() } };
+  let time = new Date('2026-09-30T10:00:00Z');
+  let learner = new Learning(storage, () => time);
+  learner.run('profile', { name: 'Test', interests: 'Words', goal: 'Explain ideas', language: 'English' });
+  learner.run('start', { mode: 'short' });
+  const ids = () => ({ sessionId: learner.session.id, exerciseId: learner.session.items[learner.session.index].id });
+  assert.equal(learner.state().session.teaching, true);
+  assert.equal('terms' in learner.state().session.exercise, false);
+  learner.run('answer', { ...ids(), answer: 'A rough answer helps plan shopping.' });
+  learner.run('answer', { ...ids(), answer: 'duplicate' });
+  assert.equal(learner.data.attempts.length, 1);
+  assert.equal(learner.data.concepts.estimate.learned, true);
+  const original = learner.state().session.id;
+  learner = new Learning(storage, () => time);
+  assert.equal(learner.state().session.id, original);
+  assert.equal(learner.state().session.result.score, 1);
+  learner.run('next', ids());
+  learner.run('answer', { ...ids(), answer: '', skip: true });
+  assert.equal(learner.state().session.result.score, null);
+  learner.run('next', ids());
+  assert.equal('answer' in learner.state().session.exercise, false);
+  learner.run('answer', { ...ids(), answer: String(learner.session.items[2].answer), explanation: 'Question unclear' });
+  assert.equal(learner.state().session.result.score, null);
+  learner.run('next', ids());
+  assert.throws(() => learner.run('answer', { ...ids(), answer: 'red' }), /sequence_not_prepared/);
+  learner.run('prepare', ids());
+  learner.run('answer', { ...ids(), answer: learner.session.items[3].answer });
+  learner.run('next', ids());
+  assert.equal(learner.state().session, null);
+  assert.equal(learner.state().summary.count, 4);
+  const recall = learner.data.attempts[0];
+  learner.run('correct', { attemptId: recall.id, score: null });
+  assert.equal(learner.data.concepts.estimate, undefined);
+  learner.run('correct', { attemptId: recall.id, score: 1 });
+  assert.equal(learner.data.concepts.estimate.learned, true);
+  time = new Date('2026-10-30T10:00:00Z');
+  assert.equal(learner.state().dueCount, 1);
+  learner.run('start', { mode: 'daily' });
+  assert.equal(learner.session.items[0].conceptId, 'estimate');
+  assert.throws(() => learner.run('next', { sessionId: 'stale', exerciseId: 'stale' }), /stale_exercise/);
+  const exportData = JSON.parse(learner.export());
+  assert.equal(exportData.profile.name, 'Test'); assert.equal(exportData.attempts.length, 4);
+  learner.clear(); assert.equal(learner.state().profile, null); assert.equal(db.prepare('SELECT COUNT(*) AS n FROM learner').get().n, 0);
+  db.close();
+});
+
+test('scores accept synonyms, reject blank and wrong arithmetic, and preserve open stories unscored', () => {
+  assert.equal(grade(exercise('words', 0, 0), 'A teaspoon').score, 1);
+  assert.equal(grade(exercise('words', 0, 1), 'brolly').score, 1);
+  assert.equal(grade(exercise('words', 0, 2), 'I went outside, then came home.').score, null);
+  const maths = exercise('reason', 0, 2);
+  assert.equal(grade(maths, '£11.00').score, 1);
+  assert.equal(grade(maths, '').score, null);
+  assert.equal(grade(maths, '14').score, 0);
+  assert.equal(grade(exercise('reason',0,0),'The bus').score,1);
+  assert.equal(grade(exercise('reason',0,0),'taxi').score,0);
+  assert.equal(grade(exercise('reason',0,1),'£10').score,1);
+  const shapes = exercise('attention',1,2);
+  assert.equal(grade(shapes,shapes.answer).score,1);
+  assert.equal(grade(shapes,shapes.sequence.slice().reverse().join(' ')).score,0);
+});
+
+test('prerequisites, new-item limits, corrected labels and local timing govern scheduling', () => {
+  const db = new DatabaseSync(':memory:');
+  let now = new Date('2026-09-30T10:00:00Z');
+  const learner = new Learning({db,crypto:{encryptString:s=>Buffer.from(s),decryptString:b=>b.toString()}},()=>now);
+  learner.run('profile',{name:'Test',interests:'Programming',goal:'Learn',language:'English'});
+  learner.run('settings',{reviewsFirst:true,newItems:1,motion:'gentle'});
+  learner.run('start',{mode:'daily',conceptId:'programming'});
+  assert.equal(learner.session.items[0].conceptId,'sequence');
+  assert.equal(new Set(learner.session.items.filter(i=>i.family==='learn').map(i=>i.conceptId)).size,1);
+  const ids={sessionId:learner.session.id,exerciseId:learner.session.items[0].id};
+  learner.run('prepare',ids); now=new Date(now.getTime()+10000);
+  learner.run('answer',{...ids,answer:'Follow steps in order',inputMode:'speech',speechOnsetMs:1200,processingMs:3000});
+  assert.equal(learner.data.attempts[0].responseMs,7000);
+  assert.equal(learner.data.attempts[0].speechOnsetMs,1200);
+  learner.run('correct',{attemptId:learner.data.attempts[0].id,score:1,explanation:'Never learned it'});
+  assert.equal(learner.data.concepts.sequence,undefined);
+  assert.throws(()=>learner.run('settings',{reviewsFirst:true,newItems:1,motion:'unknown'}),/invalid_settings/);
+  db.close();
+});
+
+test('demonstrated success advances independent levels; missed learned material returns', () => {
+  const db=new DatabaseSync(':memory:');let now=new Date('2026-09-30T10:00:00Z');
+  const storage={db,crypto:{encryptString:s=>Buffer.from(s),decryptString:b=>b.toString()}};
+  let learner=new Learning(storage,()=>now);
+  learner.run('profile',{name:'Test',interests:'Planning',goal:'Recall',language:'English'});
+  const finish=recall=>{
+    learner.run('start',{mode:'short',conceptId:'estimate'});
+    while(learner.session){const item=learner.session.items[learner.session.index],ids={sessionId:learner.session.id,exerciseId:item.id};
+      if(item.family==='attention')learner.run('prepare',ids);
+      const answer=item.family==='learn'?recall:item.accepted?.[0]??String(item.answer??'An ordinary event');
+      learner.run('answer',{...ids,answer});learner.run('next',ids);
+    }
+    now=new Date(now.getTime()+86400000);
+  };
+  for(let i=0;i<3;i++)finish('A rough answer helps plan shopping');
+  assert.equal(learner.data.levels.reason,1);assert.equal(learner.data.levels.attention,1);
+  now=new Date(new Date(learner.data.concepts.estimate.card.due).getTime()+60000);
+  learner=new Learning(storage,()=>now);assert.ok(learner.due().some(c=>c.id==='estimate'));
+  finish('banana');finish('banana');assert.equal(learner.data.concepts.estimate.misses,2);
+  learner.run('start',{mode:'short'});assert.equal(learner.session.items[0].conceptId,'estimate');
+  assert.match(learner.data.concepts.estimate.reason,/review sooner/);db.close();
+});

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+artifacts/
+*.log
+.env*
+release/
+voice-runtime/
+BUILD-STATUS.md
+*.enc
+*.sqlite*
+*.db
+*.db-*
