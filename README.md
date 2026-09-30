@@ -4,7 +4,7 @@ Personal Windows learning and recall app. Electron, React/TypeScript and local S
 
 ## Complete app downloads
 
-- [Windows installer — complete app with offline voice](https://github.com/Roronoa-code/On-the-Spot/releases/download/v0.2.1/On%20the%20Spot%20Setup%200.2.1.exe)
+- [Windows installer — complete app with offline voice](https://github.com/Roronoa-code/On-the-Spot/releases/download/v0.2.1/On-the-Spot-Setup-0.2.1.exe)
 - [Portable Windows app — extract and run](https://github.com/Roronoa-code/On-the-Spot/releases/download/v0.2.1/On-the-Spot-Portable-Windows-0.2.1.zip)
 - [Complete project — source, compiled frontend, tests, UI preview and speech files](https://github.com/Roronoa-code/On-the-Spot/releases/download/v0.2.1/On-the-Spot-Complete-Project-0.2.1.zip)
 - [Speech runtime for repository clones](https://github.com/Roronoa-code/On-the-Spot/releases/download/v0.2.1/On-the-Spot-Voice-Runtime-0.2.1.zip)
@@ -14,7 +14,7 @@ The complete application files are attached to the [public release](https://gith
 
 ## Install and use
 
-Download **On the Spot Setup 0.2.1.exe** from the [GitHub release](https://github.com/Roronoa-code/On-the-Spot/releases/tag/v0.2.1) and run it on 64-bit Windows. This is the complete app, including the offline speech model and recognition runtime. No separate speech download or API key is needed to use the installed app. The installer is unsigned. Updates and uninstall preserve learner and account data.
+Download **On-the-Spot-Setup-0.2.1.exe** from the [GitHub release](https://github.com/Roronoa-code/On-the-Spot/releases/tag/v0.2.1) and run it on 64-bit Windows. This is the complete app, including the offline speech model and recognition runtime. No separate speech download or API key is needed to use the installed app. The installer is unsigned. Updates and uninstall preserve learner and account data.
 
 1. Fill in your interests, goal and preferred language. Edit them later in Progress.
 2. In Today, choose a short or daily session and optionally a topic. Teaching comes before unfamiliar material and prerequisites.
@@ -92,5 +92,6 @@ Node checks cover OAuth/stream failures, usage limits, malformed schemas, inject
 - [Renewal and revocation](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions)
 - [whisper.cpp](https://github.com/ggml-org/whisper.cpp)
 - [ts-fsrs](https://github.com/open-spaced-repetition/ts-fsrs)
+
 
 
